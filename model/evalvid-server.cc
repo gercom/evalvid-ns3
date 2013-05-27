@@ -79,7 +79,7 @@ EvalvidServer::GetTypeId (void)
 	   .AddAttribute ("MaxPackets",
 			   "The maximum number of packets the application will send",
 			   UintegerValue (100),
-			   MakeUintegerAccessor (&EvalvidServer::m_count),
+			   MakeUintegerAccessor (&EvalvidServer::max),
 			   MakeUintegerChecker<uint32_t> ())
 	   .AddAttribute ("Interval",
 			   "The time to wait between packets", TimeValue (Seconds (1.0)),
@@ -131,6 +131,8 @@ EvalvidServer::StartApplication (void)
 {
   NS_LOG_FUNCTION (this);
 
+  max = m_size;
+
   if (m_socket == 0)
     {
       TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
@@ -140,9 +142,7 @@ EvalvidServer::StartApplication (void)
       m_socket->Bind (local);
     }
 
-    max = 1024;
-
-    ndx = 0;
+   ndx = 0;
     nrec = 0;
     id = 0;
     a_ = 0;

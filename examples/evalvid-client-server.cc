@@ -94,6 +94,7 @@ main (int argc, char *argv[])
   EvalvidServerHelper server (port);
   server.SetAttribute ("SendTraceFilename", StringValue("st_highway_cif.st"));
   server.SetAttribute ("SendDumpFilename", StringValue("sd_a01"));
+  server.SetAttribute ("PacketSize",UintegerValue(1014));
   ApplicationContainer apps = server.Install (n.Get(1));
   apps.Start (Seconds (9.0));
   apps.Stop (Seconds (101.0));
