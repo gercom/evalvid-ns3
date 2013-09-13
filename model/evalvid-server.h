@@ -16,6 +16,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Billy Pinheiro <haquiticos@gmail.com>
+ *         Saulo da Mata <damata.saulo@gmail.com>
  *
  */
 
@@ -28,18 +29,15 @@
 #include "ns3/address.h"
 #include "ns3/ipv4-address.h"
 #include "ns3/seq-ts-header.h"
-
 #include "ns3/socket.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <netinet/in.h>
 
 #include <stdio.h>
 #include <fstream>
 #include <iostream>
-#include <fstream>
 #include <iomanip>
+#include <vector>
+#include <map>
 
 using std::ifstream;
 using std::ofstream;
@@ -49,8 +47,10 @@ using std::ios;
 using std::endl;
 
 
+using namespace std;
 
 namespace ns3 {
+
 /**
  * \ingroup applications
  * \defgroup Evalvid Evalvid
@@ -58,7 +58,7 @@ namespace ns3 {
 
 /**
  * \ingroup Evalvid
- * \class EvlavidClient
+ * \class EvalvidClient
  * \brief A Udp server. Receives UDP packets from a remote host. UDP packets
  * carry a 32bits sequence number followed by a 64bits time stamp in their
  * payloads. The application uses, the sequence number to determine if a packet
@@ -70,36 +70,9 @@ public:
   static TypeId GetTypeId (void);
   EvalvidServer ();
   virtual ~EvalvidServer ();
-  /**
-   * returns the number of lost packets
-   * \return the number of lost packets
-   */
-  uint32_t GetLost (void) const;
-
-  /**
-   * \brief returns the number of received packets
-   * \return the number of received packets
-   */
-  uint32_t GetReceived (void) const;
-
-  //evalvid structs
-  struct tracerec {
-		Time trec_time; /* inter-packet time (usec) */
-		u_int32_t trec_size; /* frame size (bytes) */
-		char trec_type; /* packet type */
-		u_int32_t trec_prio; /* packet priority */
-		u_int32_t trec_id; /* maximun fragmented size (bytes) */
-	};
-	ofstream sdTrace;
 
 protected:
   virtual void DoDispose (void);
-
-  unsigned int max, ndx, a_, fullPkt, restPkt, i, nrec, id;
-  std::string st_filename,sd_filename;
-  struct tracerec *trace;
-  struct tracerec trec_;
-  Time startTime,videoTime;
 
 private:
 
@@ -107,26 +80,32 @@ private:
   virtual void StopApplication (void);
 
   void Setup (void);
-  void ProcessStreamData();
-  void GetNextFrame(unsigned int& ndx, struct tracerec& t);
   void HandleRead (Ptr<Socket> socket);
-  void Send (int nbyte);
+  void Send();
 
-  ofstream rdTrace;
-  uint16_t m_port;
+
+  string      m_videoTraceFileName;	        //File from mp4trace tool of Evalvid.
+  string      m_senderTraceFileName;		//File with information of packets transmitted by EvalvidServer.
+  fstream     m_videoTraceFile;
+  uint32_t    m_numOfFrames;
+  uint16_t    m_packetPayload;
+  ofstream    m_senderTraceFile;
+  uint32_t    m_packetId;
+  uint16_t    m_port;
   Ptr<Socket> m_socket;
-  Address m_local;
-  uint32_t m_received;
-  //PacketLossCounter m_lossCounter;
-  Ipv4Address m_peerAddress;
-  uint16_t m_peerPort;
-  EventId m_sendEvent;
-  uint32_t m_count;
-  Time m_interval;
-  uint32_t m_size;
-  uint32_t m_sent;
+  Address     m_peerAddress;
+  EventId     m_sendEvent;
 
-  Address from_client;
+  struct m_videoInfoStruct_t
+  {
+    string   frameType;
+    uint32_t frameSize;
+    uint16_t numOfUdpPackets;
+    Time     packetInterval;
+  };
+
+  map<uint32_t, m_videoInfoStruct_t*> m_videoInfoMap;
+  map<uint32_t, m_videoInfoStruct_t*>::iterator m_videoInfoMapIt;
 };
 
 } // namespace ns3

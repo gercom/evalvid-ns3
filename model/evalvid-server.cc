@@ -16,6 +16,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Billy Pinheiro <haquiticos@gmail.com>
+ *         Saulo da Mata <damata.saulo@gmail.com>
  *
  */
 
@@ -29,20 +30,11 @@
 #include "ns3/packet.h"
 #include "ns3/uinteger.h"
 #include "ns3/string.h"
-//#include "packet-loss-counter.h"
 
 #include "evalvid-server.h"
 
 
-#include <iomanip>
-
-using std::ifstream;
-using std::ofstream;
-using std::ostream;
-
-using std::ios;
-using std::endl;
-
+using namespace std;
 
 namespace ns3 {
 
@@ -61,40 +53,22 @@ EvalvidServer::GetTypeId (void)
                    UintegerValue (100),
                    MakeUintegerAccessor (&EvalvidServer::m_port),
                    MakeUintegerChecker<uint16_t> ())
- 	   .AddAttribute (
-			   "RemoteAddress",
-			   "The destination Ipv4Address of the outbound packets",
-			   Ipv4AddressValue (),
-			   MakeIpv4AddressAccessor (&EvalvidServer::m_peerAddress),
-			   MakeIpv4AddressChecker ())
-	   .AddAttribute ("RemotePort", "The destination port of the outbound packets",
-			   UintegerValue (100),
-			   MakeUintegerAccessor (&EvalvidServer::m_peerPort),
-			   MakeUintegerChecker<uint16_t> ())
-	   .AddAttribute ("PacketSize",
-			   "Size of packets generated. The minimum packet size is 12 bytes which is the size of the header carrying the sequence number and the time stamp.",
-			   UintegerValue (1024),
-			   MakeUintegerAccessor (&EvalvidServer::m_size),
-			   MakeUintegerChecker<uint32_t> (12,1500))
-	   .AddAttribute ("MaxPackets",
-			   "The maximum number of packets the application will send",
-			   UintegerValue (100),
-			   MakeUintegerAccessor (&EvalvidServer::max),
-			   MakeUintegerChecker<uint32_t> ())
-	   .AddAttribute ("Interval",
-			   "The time to wait between packets", TimeValue (Seconds (1.0)),
-			   MakeTimeAccessor (&EvalvidServer::m_interval),
-			   MakeTimeChecker ())
-	   .AddAttribute ("SendDumpFilename",
-			   "Send Dump Filename",
-			   StringValue(""),
-			   MakeStringAccessor(&EvalvidServer::sd_filename),
-			   MakeStringChecker())
-	   .AddAttribute ("SendTraceFilename",
-			   "Send trace Filename",
-			   StringValue(""),
-			   MakeStringAccessor(&EvalvidServer::st_filename),
-			   MakeStringChecker())
+    .AddAttribute ("SenderDumpFilename",
+                   "Sender Dump Filename",
+                   StringValue(""),
+                   MakeStringAccessor(&EvalvidServer::m_senderTraceFileName),
+                   MakeStringChecker())
+    .AddAttribute ("SenderTraceFilename",
+                   "Sender trace Filename",
+                   StringValue(""),
+                   MakeStringAccessor(&EvalvidServer::m_videoTraceFileName),
+                   MakeStringChecker())
+    .AddAttribute ("PacketPayload",
+                   "Packet Payload, i.e. MTU - (SEQ_HEADER + UDP_HEADER + IP_HEADER). "
+                   "This is the same value used to hint video with MP4Box. Default: 1460.",
+                   UintegerValue (1460),
+                   MakeUintegerAccessor (&EvalvidServer::m_packetPayload),
+                   MakeUintegerChecker<uint16_t> ())
     ;
   return tid;
 }
@@ -102,21 +76,15 @@ EvalvidServer::GetTypeId (void)
 EvalvidServer::EvalvidServer ()
  {
   NS_LOG_FUNCTION (this);
-  m_received=0;
+  m_socket = 0;
+  m_packetPayload = 0;
+  m_packetId = 0;
   m_sendEvent = EventId ();
 }
 
 EvalvidServer::~EvalvidServer ()
 {
   NS_LOG_FUNCTION (this);
-}
-
-uint32_t
-EvalvidServer::GetReceived (void) const
-{
-
-  return m_received;
-
 }
 
 void
@@ -129,213 +97,222 @@ EvalvidServer::DoDispose (void)
 void
 EvalvidServer::StartApplication (void)
 {
-  NS_LOG_FUNCTION (this);
+  NS_LOG_FUNCTION_NOARGS();
 
-  max = m_size;
+  Ptr<Socket> socket = 0;
+  Ptr<Socket> socket6 = 0;
 
-  if (m_socket == 0)
+  if (socket == 0)
     {
       TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
-      m_socket = Socket::CreateSocket (GetNode (), tid);
+      socket = Socket::CreateSocket (GetNode (), tid);
       InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (),
                                                    m_port);
-      m_socket->Bind (local);
+      socket->Bind (local);
+
+      socket->SetRecvCallback (MakeCallback (&EvalvidServer::HandleRead, this));
     }
 
-   ndx = 0;
-    nrec = 0;
-    id = 0;
-    a_ = 0;
 
-   startTime = Now();
-   videoTime = Seconds(0);
+  if (socket6 == 0)
+    {
+      TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
+      socket6 = Socket::CreateSocket (GetNode (), tid);
+      Inet6SocketAddress local = Inet6SocketAddress (Ipv6Address::GetAny (),
+                                                   m_port);
+      socket6->Bind (local);
 
+      socket6->SetRecvCallback (MakeCallback (&EvalvidServer::HandleRead, this));
+    }
 
-    Setup();
-    GetNextFrame(ndx, trec_);
-    startTime = trec_.trec_time;
-
-    m_socket->SetRecvCallback(MakeCallback(&EvalvidServer::HandleRead, this));
+  //Load video trace file
+  Setup();
 }
 
 void
 EvalvidServer::StopApplication ()
 {
-  NS_LOG_FUNCTION (this);
-  Simulator::Cancel (m_sendEvent);
+  NS_LOG_FUNCTION_NOARGS();
+  //Simulator::Cancel (m_sendEvent);
 }
 
 void
 EvalvidServer::Setup()
 {
-	unsigned long id, size, prio;
-	double vtime;
-	char type;
-	tracerec* t;
+  NS_LOG_FUNCTION_NOARGS();
 
-	sdTrace.open(sd_filename.c_str(), ios::out);
-	if (sdTrace.fail()) {
-		NS_LOG_ERROR("Error while opening output file: " << sd_filename.c_str());
-		return;
-	}
+  m_videoInfoStruct_t *videoInfoStruct;
+  uint32_t frameId;
+  string frameType;
+  uint32_t frameSize;
+  uint16_t numOfUdpPackets;
+  double sendTime;
+  double lastSendTime = 0.0;
 
-	//ifstream traceFile(filename, ios::in);
-	ifstream traceFile(st_filename.c_str(), ios::in);
-
-	if (traceFile.fail()) {
-
-		NS_LOG_ERROR("Error while opening input file: " << st_filename.c_str());
-		return;
-	}
-	while (traceFile >> id >> type >> size >> prio >> vtime) {
-		nrec++;
-	}
-
-	NS_LOG_INFO("Register Numbers: " << nrec);
-
-	traceFile.clear();
-	traceFile.seekg(0,ios::beg);
-	trace = new struct tracerec[nrec];
-	t = trace;
-
-	while (traceFile >> id >> type >> size >> prio >> vtime) {
-		t->trec_id = id;
-		t->trec_type = type;
-		t->trec_size = size;
-		t->trec_prio = prio;
-		t->trec_time = Seconds(vtime);
-		NS_LOG_INFO(id << " "<<type <<" "<< size<<" " << prio <<" "<< t->trec_time.GetSeconds() );
-		t++;
-
-	}
-}
-
-void
-EvalvidServer::GetNextFrame(unsigned int& ndx, struct tracerec& t)
-{
-	t.trec_time = trace[ndx].trec_time;
-	t.trec_size = trace[ndx].trec_size;
-	t.trec_type = trace[ndx].trec_type;
-	t.trec_prio = trace[ndx].trec_prio;
-	t.trec_id = trace[ndx].trec_id;
-
-	//i dont know why but was not working inside the IF(bug 1, fixed)
-	ndx++;
-	if (ndx == nrec) {
-		NS_LOG_INFO("######################################################## " << t.trec_id );
-		ndx = 0;
-		a_ = 1;
-	}
-}
-
-void
-EvalvidServer::ProcessStreamData()
-{
-
-	fullPkt = trec_.trec_size / max;
-	restPkt = trec_.trec_size % max;
-
-	NS_LOG_INFO("id pkt: " <<  trec_.trec_id << " trec_size :" << trec_.trec_size );
-	NS_LOG_INFO("fullpkt :" << fullPkt << " restPkt: " << restPkt);
-
-	if (fullPkt > 0) {
-		for (i = 0; i < fullPkt; i++) {
-			Send(max);
-		}
-	}
-	if (restPkt != 0) {
-		Send(restPkt);
-	}
-    
-
-	Time interval = trec_.trec_time;
-
-	GetNextFrame(ndx, trec_);
-
-	Time vtime = trec_.trec_time - interval ;
-	
-	videoTime += vtime;
-
-	NS_LOG_INFO("pacotes ID : " << trec_.trec_id << " no tempo: " << (Simulator::Now() + vtime).GetSeconds() << " Agora : " << Simulator::Now().GetSeconds() << " diferenca: " << vtime.GetSeconds() << " Tempo Video: " << videoTime.GetSeconds()  );
-
-	//if there is frames to send, so schedule that
-	if(a_ == 0)
-	{
-
-		m_sendEvent = Simulator::Schedule (vtime, &EvalvidServer::ProcessStreamData, this);
-	}
-}
-
-
-void
-EvalvidServer::Send (int nbytes)
-{
-  NS_LOG_FUNCTION_NOARGS ();
-  //i comment that, i dont really now what its does, but was not working with.
-  //NS_ASSERT (m_sendEvent.IsExpired ());
-  Ptr<Packet> p = Create<Packet> (nbytes );
-
-
-  NS_LOG_INFO("Size after: " << p->GetSize());
-
-  Time time_now = Simulator::Now();
-  sdTrace << std::fixed << std::setprecision(4) << time_now.ToDouble(Time::S)
-  		  << std::setfill(' ') << std::setw(16) <<  "id " << m_sent
-  		  << std::setfill(' ') <<  std::setw(16) <<  "udp " << p->GetSize()
-  		  << std::endl;
-
-  //fix LTE issue, thx Louis Christodoulou
-    NS_LOG_INFO("Size before: " << p->GetSize());
-    SeqTsHeader seqTs;
-    seqTs.SetSeq (m_sent);
-    p->AddHeader (seqTs);
-
-  NS_LOG_INFO("IPPPPPPPPPPP do Cliente: " << from_client);
-
-  if ((m_socket->SendTo(p,0, from_client )) >= 0)
+  //Open file from mp4trace tool of EvalVid.
+  ifstream videoTraceFile(m_videoTraceFileName.c_str(), ios::in);
+  if (videoTraceFile.fail())
     {
-      ++m_sent;
-     NS_LOG_LOGIC("#### TraceDelay TX " << m_size << " bytes to "
-                  << m_peerAddress << " Uid: " << m_sent
-                  << " Time: " << (Simulator::Now ()).GetSeconds ());
+      NS_LOG_ERROR(">> EvalvidServer: Error while opening video trace file: " << m_videoTraceFileName.c_str());
+      return;
+    }
 
+
+  //Store video trace information on the struct
+  while (videoTraceFile >> frameId >> frameType >> frameSize >> numOfUdpPackets >> sendTime)
+    {
+      videoInfoStruct = new m_videoInfoStruct_t;
+      videoInfoStruct->frameType = frameType;
+      videoInfoStruct->frameSize = frameSize;
+      videoInfoStruct->numOfUdpPackets = numOfUdpPackets;
+      videoInfoStruct->packetInterval = Seconds(sendTime - lastSendTime);
+      m_videoInfoMap.insert (pair<uint32_t, m_videoInfoStruct_t*>(frameId, videoInfoStruct));
+      NS_LOG_LOGIC(">> EvalvidServer: " << frameId << "\t" << frameType << "\t" <<
+                                frameSize << "\t" << numOfUdpPackets << "\t" << sendTime);
+      lastSendTime = sendTime;
+    }
+
+  m_numOfFrames = frameId;
+  m_videoInfoMapIt = m_videoInfoMap.begin();
+
+  //Open file to store information of packets transmitted by EvalvidServer.
+  m_senderTraceFile.open(m_senderTraceFileName.c_str(), ios::out);
+  if (m_senderTraceFile.fail())
+    {
+      NS_LOG_ERROR(">> EvalvidServer: Error while opening sender trace file: " << m_senderTraceFileName.c_str());
+      return;
+    }
+}
+
+void
+EvalvidServer::Send ()
+{
+  NS_LOG_FUNCTION( this << Simulator::Now().GetSeconds());
+
+  if (m_videoInfoMapIt != m_videoInfoMap.end())
+    {
+      //Sending the frame in multiples segments
+      for(int i=0; i<m_videoInfoMapIt->second->numOfUdpPackets - 1; i++)
+        {
+          Ptr<Packet> p = Create<Packet> (m_packetPayload);
+          m_packetId++;
+
+          if (InetSocketAddress::IsMatchingType (m_peerAddress))
+            {
+              NS_LOG_DEBUG(">> EvalvidServer: Send packet at " << Simulator::Now().GetSeconds() << "s\tid: " << m_packetId
+                            << "\tudp\t" << p->GetSize() << " to " << InetSocketAddress::ConvertFrom (m_peerAddress).GetIpv4 ()
+                            << std::endl);
+            }
+          else if (Inet6SocketAddress::IsMatchingType (m_peerAddress))
+            {
+              NS_LOG_DEBUG(">> EvalvidServer: Send packet at " << Simulator::Now().GetSeconds() << "s\tid: " << m_packetId
+                            << "\tudp\t" << p->GetSize() << " to " << Inet6SocketAddress::ConvertFrom (m_peerAddress).GetIpv6 ()
+                            << std::endl);
+            }
+
+          m_senderTraceFile << std::fixed << std::setprecision(4) << Simulator::Now().ToDouble(Time::S)
+                            << std::setfill(' ') << std::setw(16) <<  "id " << m_packetId
+                            << std::setfill(' ') <<  std::setw(16) <<  "udp " << p->GetSize()
+                            << std::endl;
+
+          SeqTsHeader seqTs;
+          seqTs.SetSeq (m_packetId);
+          p->AddHeader (seqTs);
+          m_socket->SendTo(p, 0, m_peerAddress);
+        }
+
+      //Sending the rest of the frame
+      Ptr<Packet> p = Create<Packet> (m_videoInfoMapIt->second->frameSize % m_packetPayload);
+      m_packetId++;
+
+      if (InetSocketAddress::IsMatchingType (m_peerAddress))
+        {
+          NS_LOG_DEBUG(">> EvalvidServer: Send packet at " << Simulator::Now().GetSeconds() << "s\tid: " << m_packetId
+                       << "\tudp\t" << p->GetSize() << " to " << InetSocketAddress::ConvertFrom (m_peerAddress).GetIpv4 ()
+                       << std::endl);
+        }
+      else if (Inet6SocketAddress::IsMatchingType (m_peerAddress))
+        {
+          NS_LOG_DEBUG(">> EvalvidServer: Send packet at " << Simulator::Now().GetSeconds() << "s\tid: " << m_packetId
+                       << "\tudp\t" << p->GetSize() << " to " << Inet6SocketAddress::ConvertFrom (m_peerAddress).GetIpv6 ()
+                       << std::endl);
+        }
+
+      m_senderTraceFile << std::fixed << std::setprecision(4) << Simulator::Now().ToDouble(Time::S)
+                        << std::setfill(' ') << std::setw(16) <<  "id " << m_packetId
+                        << std::setfill(' ') <<  std::setw(16) <<  "udp " << p->GetSize()
+                        << std::endl;
+
+      SeqTsHeader seqTs;
+      seqTs.SetSeq (m_packetId);
+      p->AddHeader (seqTs);
+      m_socket->SendTo(p, 0, m_peerAddress);
+
+
+      m_videoInfoMapIt++;
+      if (m_videoInfoMapIt == m_videoInfoMap.end())
+        {
+          NS_LOG_INFO(">> EvalvidServer: Video streaming successfully completed!");
+        }
+      else
+        {
+          if (m_videoInfoMapIt->second->packetInterval.GetSeconds() == 0)
+            {
+              m_sendEvent = Simulator::ScheduleNow (&EvalvidServer::Send, this);
+            }
+          else
+            {
+              m_sendEvent = Simulator::Schedule (m_videoInfoMapIt->second->packetInterval,
+                                                 &EvalvidServer::Send, this);
+            }
+        }
     }
   else
     {
-      NS_LOG_INFO ("Error while sending " << m_size << " bytes to "
-                   << m_peerAddress);
+      NS_LOG_ERROR(">> EvalvidServer: Frame does not exist!");
     }
 }
 
 void
 EvalvidServer::HandleRead (Ptr<Socket> socket)
 {
-	NS_LOG_LOGIC("\n perdido de inicio de transmissão no server \n");
+  NS_LOG_FUNCTION_NOARGS();
+
   Ptr<Packet> packet;
   Address from;
+  m_socket = socket;
+
+
   while ((packet = socket->RecvFrom (from)))
     {
+      m_peerAddress = from;
       if (InetSocketAddress::IsMatchingType (from))
         {
-    	  //bug fix
+          NS_LOG_INFO (">> EvalvidServer: Client at " << InetSocketAddress::ConvertFrom (from).GetIpv4 ()
+                        << " is requesting a video streaming.");
+        }
+      else if (Inet6SocketAddress::IsMatchingType (from))
+        {
+             NS_LOG_INFO (">> EvalvidServer: Client at " << Inet6SocketAddress::ConvertFrom (from).GetIpv6 ()
+                           << " is requesting a video streaming.");
+        }
 
-          InetSocketAddress address = InetSocketAddress::ConvertFrom (from);
-          m_peerAddress = address.GetIpv4();
-          NS_LOG_INFO ("Received " << packet->GetSize() << " bytes from " <<
-            address.GetIpv4());
-
-          packet->RemoveAllPacketTags ();
-          packet->RemoveAllByteTags ();
-
-          Ptr<Packet> p = Create<Packet> (0);
-          if ((m_socket->SendTo(p,0, from )) >= 0)
-        	  NS_LOG_INFO("First packet to client sent");
+      if (m_videoInfoMapIt != m_videoInfoMap.end())
+        {
+          NS_LOG_INFO(">> EvalvidServer: Starting video streaming...");
+          if (m_videoInfoMapIt->second->packetInterval.GetSeconds() == 0)
+            {
+              m_sendEvent = Simulator::ScheduleNow (&EvalvidServer::Send, this);
+            }
           else
-          	  NS_LOG_INFO("Error sending first packet");
-
-          from_client = from;
-          NS_LOG_LOGIC ("Sending video");
-          m_sendEvent = Simulator::Schedule (startTime,  &EvalvidServer::ProcessStreamData, this);
+            {
+              m_sendEvent = Simulator::Schedule (m_videoInfoMapIt->second->packetInterval,
+                                                 &EvalvidServer::Send, this);
+            }
+        }
+      else
+        {
+          NS_LOG_ERROR(">> EvalvidServer: Frame does not exist!");
         }
     }
 }

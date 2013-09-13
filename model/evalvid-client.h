@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Billy Pinheiro <haquiticos@gmail.com>
-  *
+ *         Saulo da Mata <damata.saulo@gmail.com>
  */
 
 #ifndef __EVALVID_CLIENT_H__
@@ -46,6 +46,7 @@ using std::ostream;
 using std::ios;
 using std::endl;
 
+using namespace std;
 
 namespace ns3 {
 
@@ -81,27 +82,20 @@ public:
 protected:
   virtual void DoDispose (void);
 
-
-
 private:
 
   virtual void StartApplication (void);
   virtual void StopApplication (void);
 
-  void ScheduleTransmit (Time dt);
   void Send (void);
   void HandleRead (Ptr<Socket> socket);
 
-  ofstream rdTrace;
-  std::string rd_filename;
-
+  ofstream    receiverDumpFile;
+  string      receiverDumpFileName;
   Ptr<Socket> m_socket;
   Ipv4Address m_peerAddress;
-  uint16_t m_peerPort;
-
-  EventId m_sendEvent;
-
-  uint16_t m_port;
+  uint16_t    m_peerPort;
+  EventId     m_sendEvent;
 };
 
 } // namespace ns3

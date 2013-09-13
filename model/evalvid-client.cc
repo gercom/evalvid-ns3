@@ -15,7 +15,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Billy Pinheiro <haquiticos@gmail.com>   
+ * Author: Billy Pinheiro <haquiticos@gmail.com>
+ *         Saulo da Mata <damata.saulo@gmail.com>
  */
 #include "ns3/log.h"
 #include "ns3/ipv4-address.h"
@@ -27,12 +28,11 @@
 #include "ns3/packet.h"
 #include "ns3/uinteger.h"
 #include "evalvid-client.h"
-//#include "seq-ts-header.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include "ns3/string.h"
 
-#include <iomanip>
 
 namespace ns3 {
 
@@ -45,8 +45,7 @@ EvalvidClient::GetTypeId (void)
   static TypeId tid = TypeId ("ns3::EvalvidClient")
     .SetParent<Application> ()
     .AddConstructor<EvalvidClient> ()
-    .AddAttribute (
-                   "RemoteAddress",
+    .AddAttribute ("RemoteAddress",
                    "The destination Ipv4Address of the outbound packets",
                    Ipv4AddressValue (),
                    MakeIpv4AddressAccessor (&EvalvidClient::m_peerAddress),
@@ -55,16 +54,11 @@ EvalvidClient::GetTypeId (void)
                    UintegerValue (100),
                    MakeUintegerAccessor (&EvalvidClient::m_peerPort),
                    MakeUintegerChecker<uint16_t> ())
-   .AddAttribute ("Port",
-				  "Port on which we listen for incoming packets.",
-				  UintegerValue (100),
-				  MakeUintegerAccessor (&EvalvidClient::m_port),
-				  MakeUintegerChecker<uint16_t> ())
-  .AddAttribute ("RecvDumpFilename",
-				  "Receive Dump Filename",
-				  StringValue(""),
-				  MakeStringAccessor(&EvalvidClient::rd_filename),
-				  MakeStringChecker())
+    .AddAttribute ("ReceiverDumpFilename",
+                   "Receiver Dump Filename",
+                   StringValue(""),
+                   MakeStringAccessor(&EvalvidClient::receiverDumpFileName),
+                   MakeStringChecker())
     ;
   return tid;
 }
@@ -72,6 +66,7 @@ EvalvidClient::GetTypeId (void)
 EvalvidClient::EvalvidClient ()
 {
   NS_LOG_FUNCTION_NOARGS ();
+  m_sendEvent = EventId ();
 }
 
 EvalvidClient::~EvalvidClient ()
@@ -96,9 +91,7 @@ EvalvidClient::DoDispose (void)
 void
 EvalvidClient::StartApplication (void)
 {
-
-
-  NS_LOG_FUNCTION_NOARGS ();
+  NS_LOG_FUNCTION_NOARGS();
 
   if (m_socket == 0)
     {
@@ -109,20 +102,17 @@ EvalvidClient::StartApplication (void)
     }
 
 
-  rdTrace.open(rd_filename.c_str(), ios::out);
-  if (rdTrace.fail())
-  {
-	  NS_LOG_ERROR("Error while opening output file: " << rd_filename.c_str());
-
-  		return;
-  }
+  receiverDumpFile.open(receiverDumpFileName.c_str(), ios::out);
+  if (receiverDumpFile.fail())
+    {
+      NS_LOG_ERROR(">> EvalvidClient: Error while opening output file: " << receiverDumpFileName.c_str());
+      return;
+    }
 
   m_socket->SetRecvCallback (MakeCallback (&EvalvidClient::HandleRead, this));
 
-  m_sendEvent = Simulator::Schedule ( Seconds(1) , &EvalvidClient::Send, this);
-  m_sendEvent = Simulator::Schedule ( Seconds(2) , &EvalvidClient::Send, this);
-  m_sendEvent = Simulator::Schedule ( Seconds(3) , &EvalvidClient::Send, this);
-  m_sendEvent = Simulator::Schedule ( Seconds(4) , &EvalvidClient::Send, this);
+  //Delay requesting to get server on line.
+  m_sendEvent = Simulator::Schedule ( Seconds(0.1) , &EvalvidClient::Send, this);
 
 }
 
@@ -133,18 +123,16 @@ EvalvidClient::Send (void)
 
   int m_size = 1;
 
-  Ptr<Packet> p = Create<Packet> (m_size);
+  Ptr<Packet> p = Create<Packet> ();
 
-  //fix LTE issue, thx Louis Christodoulou
   SeqTsHeader seqTs;
   seqTs.SetSeq (0);
   p->AddHeader (seqTs);
 
-  m_size=+ sizeof(seqTs);
-
   m_socket->Send (p);
 
-  NS_LOG_INFO ("Envio de pedido : Sent " << m_size << " bytes to " << m_peerAddress);
+  NS_LOG_INFO (">> EvalvidClient: Sending request for video streaming to EvalvidServer at "
+                << m_peerAddress << ":" << m_peerPort);
 }
 
 
@@ -152,11 +140,7 @@ void
 EvalvidClient::StopApplication ()
 {
   NS_LOG_FUNCTION_NOARGS ();
-  rdTrace.close();
-  if (m_socket != 0)
-  {
-	m_socket->SetRecvCallback (MakeNullCallback<void, Ptr<Socket> > ());
-  }
+  receiverDumpFile.close();
   Simulator::Cancel (m_sendEvent);
 }
 
@@ -168,39 +152,25 @@ EvalvidClient::HandleRead (Ptr<Socket> socket)
   Address from;
   while ((packet = socket->RecvFrom (from)))
     {
-
-	  NS_LOG_INFO ("+++++ Received id :" << packet->GetUid() << " Size: " << packet->GetSize());
       if (InetSocketAddress::IsMatchingType (from))
         {
           if (packet->GetSize () > 0)
-    	         {
-        	  	  	  //fix LTE issue, thx Louis Christodoulou
-        	  	  	  SeqTsHeader seqTs;
-        	  	  	  packet->RemoveHeader (seqTs);
-        	  	  	  uint32_t currentSequenceNumber = seqTs.GetSeq ();
-        	  	  	  NS_LOG_INFO("Packet Sequence Number: " << currentSequenceNumber);
+            {
+              SeqTsHeader seqTs;
+              packet->RemoveHeader (seqTs);
+              uint32_t packetId = seqTs.GetSeq ();
 
+              NS_LOG_DEBUG(">> EvalvidClient: Received packet at " << Simulator::Now().GetSeconds()
+                           << "s\tid: " << packetId
+                           << "\tudp\t" << packet->GetSize() << std::endl);
 
-    		  	  	  //InetSocketAddress address = InetSocketAddress::ConvertFrom (from);
-    		  	  	  Time time_now = Simulator::Now();
-
-    		  	  	  NS_LOG_INFO("RECEBIDO " << std::fixed << std::setprecision(4) << time_now.ToDouble(ns3::Time::S)
-    		          							<< std::setfill(' ') << std::setw(16) <<  "id " << currentSequenceNumber
-    		          							<< std::setfill(' ') <<  std::setw(16) <<  "udp " << packet->GetSize()
-    		          							<< std::endl);
-
-    		          //rdTrace << time_now.GetSeconds() << std::setfill(' ') << std::setw(16)
-    		          //	  	  <<  "id " << packet->GetUid() << std::setfill(' ') <<  std::setw(16)
-    		          //	  	  <<  "udp " << packet->GetSize() << std::endl;
-    		          rdTrace << std::fixed << std::setprecision(4) << time_now.ToDouble(ns3::Time::S)
-    		          							<< std::setfill(' ') << std::setw(16) <<  "id " << currentSequenceNumber
-    		          							<< std::setfill(' ') <<  std::setw(16) <<  "udp " << packet->GetSize()
-    		          							<< std::endl;
-
-    	         }
+              receiverDumpFile << std::fixed << std::setprecision(4) << Simulator::Now().ToDouble(ns3::Time::S)
+                               << std::setfill(' ') << std::setw(16) <<  "id " << packetId
+                               << std::setfill(' ') <<  std::setw(16) <<  "udp " << packet->GetSize()
+                               << std::endl;
+           }
         }
     }
 }
-
 
 } // Namespace ns3
