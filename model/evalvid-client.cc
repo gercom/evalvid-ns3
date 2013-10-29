@@ -121,7 +121,8 @@ EvalvidClient::Send (void)
 {
   NS_LOG_FUNCTION_NOARGS ();
 
-  int m_size = 1;
+  //Unused declared m_size variable
+  //int m_size = 1;
 
   Ptr<Packet> p = Create<Packet> ();
 

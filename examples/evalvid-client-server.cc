@@ -92,9 +92,9 @@ main (int argc, char *argv[])
   //
   uint16_t port = 4000;
   EvalvidServerHelper server (port);
-  server.SetAttribute ("SendTraceFilename", StringValue("st_highway_cif.st"));
-  server.SetAttribute ("SendDumpFilename", StringValue("sd_a01"));
-  server.SetAttribute ("PacketSize",UintegerValue(1014));
+  server.SetAttribute ("SenderTraceFilename", StringValue("st_highway_cif.st"));
+  server.SetAttribute ("SenderDumpFilename", StringValue("sd_a01"));
+  server.SetAttribute ("PacketPayload",UintegerValue(1014));
   ApplicationContainer apps = server.Install (n.Get(1));
   apps.Start (Seconds (9.0));
   apps.Stop (Seconds (101.0));
@@ -104,7 +104,7 @@ main (int argc, char *argv[])
   // Create one EvalvidClient application
   //
   EvalvidClientHelper client (i.GetAddress (1),port);
-  client.SetAttribute ("RecvDumpFilename", StringValue("rd_a01"));
+  client.SetAttribute ("ReceiverDumpFilename", StringValue("rd_a01"));
   apps = client.Install (n.Get (0));
   apps.Start (Seconds (10.0));
   apps.Stop (Seconds (100.0));
