@@ -118,11 +118,7 @@ main (int argc, char *argv[])
   NetDeviceContainer enbLteDevs = lteHelper->InstallEnbDevice (enbNodes);
   NetDeviceContainer ueLteDevs = lteHelper->InstallUeDevice (ueNodes);
 
-  // Attach one UE per eNodeB
-
-  lteHelper->Attach (ueLteDevs.Get(0), enbLteDevs.Get(0));
-
-
+ 
   // Install the IP stack on the UEs
   internet.Install (ueNodes);
   Ipv4InterfaceContainer ueIpIface;
@@ -134,21 +130,22 @@ main (int argc, char *argv[])
   Ptr<Ipv4StaticRouting> ueStaticRouting = ipv4RoutingHelper.GetStaticRouting (ueNode->GetObject<Ipv4> ());
   ueStaticRouting->SetDefaultRoute (epcHelper->GetUeDefaultGatewayAddress (), 1);
 
+  // Attach one UE per eNodeB
+  lteHelper->Attach (ueLteDevs.Get(0), enbLteDevs.Get(0));
 
   //lteHelper->ActivateEpsBearer (ueLteDevs, EpsBearer (EpsBearer::NGBR_VIDEO_TCP_DEFAULT), EpcTft::Default ());
-
   
   NS_LOG_INFO ("Create Applications.");
   
   EvalvidServerHelper server(port);
-  server.SetAttribute ("SendTraceFilename", StringValue("st_highway_cif.st"));
-  server.SetAttribute ("SendDumpFilename", StringValue("sd_a01_lte"));
+  server.SetAttribute ("SenderTraceFilename", StringValue("st_highway_cif.st"));
+  server.SetAttribute ("SenderDumpFilename", StringValue("sd_a01_lte"));
   ApplicationContainer apps = server.Install(remoteHostContainer.Get(0));
   apps.Start (Seconds (9.0));
   apps.Stop (Seconds (101.0));
   
   EvalvidClientHelper client (internetIpIfaces.GetAddress (1),port);
-  client.SetAttribute ("RecvDumpFilename", StringValue("rd_a01_lte"));
+  client.SetAttribute ("ReceiverDumpFilename", StringValue("rd_a01_lte"));
   apps = client.Install (ueNodes.Get(0));
   apps.Start (Seconds (10.0));
   apps.Stop (Seconds (100.0));
