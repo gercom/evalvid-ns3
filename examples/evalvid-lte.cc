@@ -65,7 +65,8 @@ main (int argc, char *argv[])
 
 
   Ptr<LteHelper> lteHelper = CreateObject<LteHelper> ();
-  Ptr<EpcHelper>  epcHelper = CreateObject<EpcHelper> ();
+  //Ptr<EpcHelper>  epcHelper = CreateObject<EpcHelper> ();
+  Ptr<PointToPointEpcHelper>  epcHelper = CreateObject<PointToPointEpcHelper> ();
   lteHelper->SetEpcHelper (epcHelper);
   lteHelper->SetSchedulerType("ns3::PfFfMacScheduler");
 
@@ -148,11 +149,11 @@ main (int argc, char *argv[])
   client.SetAttribute ("ReceiverDumpFilename", StringValue("rd_a01_lte"));
   apps = client.Install (ueNodes.Get(0));
   apps.Start (Seconds (10.0));
-  apps.Stop (Seconds (100.0));
+  apps.Stop (Seconds (90.0));
   
 
   NS_LOG_INFO ("Run Simulation.");
-  Simulator::Stop(Seconds(105));
+  Simulator::Stop(Seconds(90));
   Simulator::Run ();         
   Simulator::Destroy ();
   
