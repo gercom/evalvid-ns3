@@ -105,7 +105,7 @@ EvalvidClient::StartApplication (void)
   receiverDumpFile.open(receiverDumpFileName.c_str(), ios::out);
   if (receiverDumpFile.fail())
     {
-      NS_LOG_ERROR(">> EvalvidClient: Error while opening output file: " << receiverDumpFileName.c_str());
+      NS_FATAL_ERROR(">> EvalvidClient: Error while opening output file: " << receiverDumpFileName.c_str());
       return;
     }
 

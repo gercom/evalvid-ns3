@@ -153,7 +153,7 @@ EvalvidServer::Setup()
   ifstream videoTraceFile(m_videoTraceFileName.c_str(), ios::in);
   if (videoTraceFile.fail())
     {
-      NS_LOG_ERROR(">> EvalvidServer: Error while opening video trace file: " << m_videoTraceFileName.c_str());
+      NS_FATAL_ERROR(">> EvalvidServer: Error while opening video trace file: " << m_videoTraceFileName.c_str());
       return;
     }
 
@@ -179,7 +179,7 @@ EvalvidServer::Setup()
   m_senderTraceFile.open(m_senderTraceFileName.c_str(), ios::out);
   if (m_senderTraceFile.fail())
     {
-      NS_LOG_ERROR(">> EvalvidServer: Error while opening sender trace file: " << m_senderTraceFileName.c_str());
+      NS_FATAL_ERROR(">> EvalvidServer: Error while opening sender trace file: " << m_senderTraceFileName.c_str());
       return;
     }
 }
@@ -269,7 +269,7 @@ EvalvidServer::Send ()
     }
   else
     {
-      NS_LOG_ERROR(">> EvalvidServer: Frame does not exist!");
+      NS_FATAL_ERROR(">> EvalvidServer: Frame does not exist!");
     }
 }
 
@@ -312,7 +312,7 @@ EvalvidServer::HandleRead (Ptr<Socket> socket)
         }
       else
         {
-          NS_LOG_ERROR(">> EvalvidServer: Frame does not exist!");
+          NS_FATAL_ERROR(">> EvalvidServer: Frame does not exist!");
         }
     }
 }
