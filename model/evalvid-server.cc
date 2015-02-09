@@ -77,6 +77,8 @@ EvalvidServer::EvalvidServer ()
  {
   NS_LOG_FUNCTION (this);
   m_socket = 0;
+  m_port = 0;
+  m_numOfFrames = 0;
   m_packetPayload = 0;
   m_packetId = 0;
   m_sendEvent = EventId ();
