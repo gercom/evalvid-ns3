@@ -155,7 +155,8 @@ EvalvidServer::Setup()
   ifstream videoTraceFile(m_videoTraceFileName.c_str(), ios::in);
   if (videoTraceFile.fail())
     {
-      NS_FATAL_ERROR(">> EvalvidServer: Error while opening video trace file: " << m_videoTraceFileName.c_str());
+      NS_FATAL_ERROR(">> EvalvidServer: Error while opening video trace file: " 
+                     << m_videoTraceFileName.c_str() << "\n" << "Error info: " << std::strerror(errno) << "\n");
       return;
     }
 
