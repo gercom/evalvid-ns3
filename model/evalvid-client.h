@@ -25,6 +25,7 @@
 #include "ns3/address.h"
 #include "ns3/address-utils.h"
 #include "ns3/udp-socket.h"
+#include "ns3/boolean.h"
 
 #include "ns3/application.h"
 #include "ns3/event-id.h"
@@ -101,6 +102,7 @@ private:
   Address     m_peerMcastAddress;   //multicast address for video multicast transmission
   Ipv4Address m_peerMcastIpv4Address; //Ipv4 multicast address for video multicast transmission
   Ipv4Address m_peerAddress;
+  bool        m_enableRequest;
   uint16_t    m_peerPort;
   EventId     m_sendEvent;
 };

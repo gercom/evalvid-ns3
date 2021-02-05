@@ -64,6 +64,11 @@ EvalvidClient::GetTypeId (void)
                    Ipv4AddressValue (),
                    MakeIpv4AddressAccessor (&EvalvidClient::m_peerMcastIpv4Address),
                    MakeIpv4AddressChecker ())
+    .AddAttribute ("EnableRequest",
+                   "Enable the client to send the request to evalvid server (default: enable)",
+                   BooleanValue (true),
+                   MakeBooleanAccessor (&EvalvidClient::m_enableRequest),
+                   MakeBooleanChecker ())
     ;
   return tid;
 }
@@ -147,7 +152,9 @@ EvalvidClient::StartApplication (void)
   }
 
   //Delay requesting to get server on line.
-  m_sendEvent = Simulator::Schedule ( Seconds(0.1) , &EvalvidClient::Send, this);
+  if (m_enableRequest) {
+    m_sendEvent = Simulator::Schedule ( Seconds(0.1) , &EvalvidClient::Send, this);
+  }
 
 
 }
