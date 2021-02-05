@@ -12,6 +12,6 @@ Author: Billy Pinheiro <haquiticos@gmail.com>
 
 5 - Run  ./waf build
 
-6 - Run ./waf --run "evalvid-client-server" or ./waf --run "evalvid-lte"
+6 - Run ./waf --run "evalvid-client-server" or ./waf --run "evalvid-lte" or ./waf --run "evalvid-client-server-mcast"
 
 Have fun!!!
