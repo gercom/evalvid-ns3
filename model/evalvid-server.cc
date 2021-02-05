@@ -69,6 +69,11 @@ EvalvidServer::GetTypeId (void)
                    UintegerValue (1460),
                    MakeUintegerAccessor (&EvalvidServer::m_packetPayload),
                    MakeUintegerChecker<uint16_t> ())
+    .AddAttribute ("MutlicastGroupAddress",
+                   "The multicast group address for video traffic",
+                   Ipv4AddressValue (),
+                   MakeIpv4AddressAccessor (&EvalvidServer::m_peerMcastIpv4Address),
+                   MakeIpv4AddressChecker ())
     ;
   return tid;
 }
@@ -82,6 +87,7 @@ EvalvidServer::EvalvidServer ()
   m_packetPayload = 0;
   m_packetId = 0;
   m_sendEvent = EventId ();
+
 }
 
 EvalvidServer::~EvalvidServer ()
@@ -127,6 +133,11 @@ EvalvidServer::StartApplication (void)
       socket6->SetRecvCallback (MakeCallback (&EvalvidServer::HandleRead, this));
     }
 
+  //peer: mcast group -- ipv4 multicast group
+  if (m_peerMcastIpv4Address.IsInitialized()) {
+      m_peerMcastAddress = Address(InetSocketAddress(m_peerMcastIpv4Address, m_port));
+  }
+  
   //Load video trace file
   Setup();
 }
@@ -221,7 +232,15 @@ EvalvidServer::Send ()
           SeqTsHeader seqTs;
           seqTs.SetSeq (m_packetId);
           p->AddHeader (seqTs);
-          m_socket->SendTo(p, 0, m_peerAddress);
+
+          //peer: mcast group -- ipv4 multicast group
+          if (!(m_peerMcastIpv4Address.IsInitialized())) {
+            m_socket->SendTo(p, 0, m_peerAddress);
+          }
+          else {
+            m_socket->SendTo(p, 0, m_peerMcastAddress);
+          }
+
         }
 
       //Sending the rest of the frame
@@ -249,8 +268,14 @@ EvalvidServer::Send ()
       SeqTsHeader seqTs;
       seqTs.SetSeq (m_packetId);
       p->AddHeader (seqTs);
-      m_socket->SendTo(p, 0, m_peerAddress);
 
+      //peer: mcast group -- ipv4 multicast group
+      if (!(m_peerMcastIpv4Address.IsInitialized())) {
+        m_socket->SendTo(p, 0, m_peerAddress);
+      }
+      else {
+        m_socket->SendTo(p, 0, m_peerMcastAddress);
+      }
 
       m_videoInfoMapIt++;
       if (m_videoInfoMapIt == m_videoInfoMap.end())
@@ -284,7 +309,6 @@ EvalvidServer::HandleRead (Ptr<Socket> socket)
   Ptr<Packet> packet;
   Address from;
   m_socket = socket;
-
 
   while ((packet = socket->RecvFrom (from)))
     {

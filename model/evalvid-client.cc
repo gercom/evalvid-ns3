@@ -59,6 +59,11 @@ EvalvidClient::GetTypeId (void)
                    StringValue(""),
                    MakeStringAccessor(&EvalvidClient::receiverDumpFileName),
                    MakeStringChecker())
+    .AddAttribute ("MutlicastGroupAddress",
+                   "The multicast group address for video traffic",
+                   Ipv4AddressValue (),
+                   MakeIpv4AddressAccessor (&EvalvidClient::m_peerMcastIpv4Address),
+                   MakeIpv4AddressChecker ())
     ;
   return tid;
 }
@@ -99,8 +104,34 @@ EvalvidClient::StartApplication (void)
       m_socket = Socket::CreateSocket (GetNode (), tid);
       m_socket->Bind ();
       m_socket->Connect (InetSocketAddress (m_peerAddress, m_peerPort));
-    }
 
+      //Multicast socket
+      //peer: mcast group -- ipv4
+      if (m_peerMcastIpv4Address.IsInitialized()) {
+        m_peerMcastAddress = Address(InetSocketAddress(m_peerMcastIpv4Address, m_peerPort));
+        m_socketMcast = Socket::CreateSocket (GetNode (), tid);
+        if (m_socketMcast->Bind (m_peerMcastAddress) == -1)
+          {
+            NS_FATAL_ERROR ("Failed to bind socket");
+          }
+        m_socketMcast->Bind ();
+        m_socketMcast->Listen ();
+        m_socketMcast->ShutdownSend ();
+        if (addressUtils::IsMulticast (m_peerMcastAddress))
+          {
+            Ptr<UdpSocket> udpSocket = DynamicCast<UdpSocket> (m_socketMcast);
+            if (udpSocket)
+              {
+                // equivalent to setsockopt (MCAST_JOIN_GROUP)
+                udpSocket->MulticastJoinGroup (0, m_peerMcastAddress);
+              }
+            else
+              {
+                NS_FATAL_ERROR ("Error: joining multicast on a non-UDP socket");
+              }
+          }
+        }
+    }
 
   receiverDumpFile.open(receiverDumpFileName.c_str(), ios::out);
   if (receiverDumpFile.fail())
@@ -110,9 +141,14 @@ EvalvidClient::StartApplication (void)
     }
 
   m_socket->SetRecvCallback (MakeCallback (&EvalvidClient::HandleRead, this));
+  //for receiving multicast video traffic
+  if (m_peerMcastIpv4Address.IsInitialized()) {
+    m_socketMcast->SetRecvCallback (MakeCallback (&EvalvidClient::HandleRead, this));
+  }
 
   //Delay requesting to get server on line.
   m_sendEvent = Simulator::Schedule ( Seconds(0.1) , &EvalvidClient::Send, this);
+
 
 }
 
@@ -148,6 +184,7 @@ EvalvidClient::HandleRead (Ptr<Socket> socket)
   NS_LOG_FUNCTION (this << socket);
   Ptr<Packet> packet;
   Address from;
+  Address localAddress;
   while ((packet = socket->RecvFrom (from)))
     {
       if (InetSocketAddress::IsMatchingType (from))
@@ -160,7 +197,8 @@ EvalvidClient::HandleRead (Ptr<Socket> socket)
 
               NS_LOG_DEBUG(">> EvalvidClient: Received packet at " << Simulator::Now().GetSeconds()
                            << "s\tid: " << packetId
-                           << "\tudp\t" << packet->GetSize() << std::endl);
+                           << "\tudp\t" << packet->GetSize() << 
+                           "\tfrom\t" << InetSocketAddress::ConvertFrom (from).GetIpv4 () <<std::endl); 
 
               receiverDumpFile << std::fixed << std::setprecision(4) << Simulator::Now().ToDouble(ns3::Time::S)
                                << std::setfill(' ') << std::setw(16) <<  "id " << packetId
