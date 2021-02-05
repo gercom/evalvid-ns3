@@ -87,7 +87,7 @@ EvalvidServer::EvalvidServer ()
   m_packetPayload = 0;
   m_packetId = 0;
   m_sendEvent = EventId ();
-
+  m_sending = false;
 }
 
 EvalvidServer::~EvalvidServer ()
@@ -120,7 +120,6 @@ EvalvidServer::StartApplication (void)
 
       socket->SetRecvCallback (MakeCallback (&EvalvidServer::HandleRead, this));
     }
-
 
   if (socket6 == 0)
     {
@@ -324,9 +323,17 @@ EvalvidServer::HandleRead (Ptr<Socket> socket)
                            << " is requesting a video streaming.");
         }
 
+      if (m_sending)
+        {
+          NS_LOG_INFO(">> EvalvidServer: Ignoring request, already sending");
+          return;
+        }
+
       if (m_videoInfoMapIt != m_videoInfoMap.end())
         {
           NS_LOG_INFO(">> EvalvidServer: Starting video streaming...");
+          m_sending = true;
+
           if (m_videoInfoMapIt->second->packetInterval.GetSeconds() == 0)
             {
               m_sendEvent = Simulator::ScheduleNow (&EvalvidServer::Send, this);
