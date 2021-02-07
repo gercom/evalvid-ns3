@@ -27,7 +27,9 @@
 #include "ns3/socket-factory.h"
 #include "ns3/packet.h"
 #include "ns3/uinteger.h"
+
 #include "evalvid-client.h"
+#include "video-type-tag.h"
 
 #include <stdlib.h>
 #include <stdio.h>

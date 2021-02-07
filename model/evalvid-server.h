@@ -31,8 +31,6 @@
 #include "ns3/seq-ts-header.h"
 #include "ns3/socket.h"
 
-#include "video-type-tag.h"
-
 #include <stdio.h>
 #include <fstream>
 #include <iostream>
@@ -112,25 +110,6 @@ private:
   map<uint32_t, m_videoInfoStruct_t*> m_videoInfoMap;
   map<uint32_t, m_videoInfoStruct_t*>::iterator m_videoInfoMapIt;
 };
-
-// class VideoPacketTypeTag : public Tag
-//  {
-//  public:
-//    VideoPacketTypeTag ();
-//    VideoPacketTypeTag (string videoPacketType);
-
-//    void SetVideoPacketType (string n);
-//    std::string GetVideoPacketType (void) const;
-//    static TypeId GetTypeId (void);
-//    virtual TypeId GetInstanceTypeId (void) const;
-//    virtual uint32_t GetSerializedSize (void) const;
-//    virtual void Serialize (TagBuffer i) const;
-//    virtual void Deserialize (TagBuffer i);
-//    virtual void Print (std::ostream &os) const;
- 
-//  private:
-//    string m_videoPacketType; 
-//  };
 
 } // namespace ns3
 
