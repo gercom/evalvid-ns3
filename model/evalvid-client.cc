@@ -206,7 +206,7 @@ EvalvidClient::HandleRead (Ptr<Socket> socket)
 
               // remove the VideoPacketTypeTag from received packet -- evalvid
               VideoPacketTypeTag vTag;
-              bool res = packet->RemovePacketTag (vTag);
+              packet->RemovePacketTag (vTag);
 
               NS_LOG_DEBUG(">> EvalvidClient: Received packet at " << Simulator::Now().GetSeconds()
                            << "s\tid: " << packetId
