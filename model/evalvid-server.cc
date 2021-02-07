@@ -74,6 +74,9 @@ EvalvidServer::GetTypeId (void)
                    Ipv4AddressValue (),
                    MakeIpv4AddressAccessor (&EvalvidServer::m_peerMcastIpv4Address),
                    MakeIpv4AddressChecker ())
+    .AddTraceSource ("Tx", "A new packet is created and is sent",
+                      MakeTraceSourceAccessor (&EvalvidServer::m_txTrace),
+                      "ns3::Packet::TracedCallback")
     ;
   return tid;
 }
@@ -170,7 +173,6 @@ EvalvidServer::Setup()
       return;
     }
 
-
   //Store video trace information on the struct
   while (videoTraceFile >> frameId >> frameType >> frameSize >> numOfUdpPackets >> sendTime)
     {
@@ -237,6 +239,8 @@ EvalvidServer::Send ()
           vTag.SetVideoPacketType(m_videoInfoMapIt->second->frameType); 
           p->AddPacketTag(vTag);
 
+          m_txTrace (p); //Tracesource: Tx -- After adding headers
+
           //peer: mcast group -- ipv4 multicast group
           if (!(m_peerMcastIpv4Address.IsInitialized())) {
             m_socket->SendTo(p, 0, m_peerAddress);
@@ -277,6 +281,8 @@ EvalvidServer::Send ()
       VideoPacketTypeTag vTag;
       vTag.SetVideoPacketType(m_videoInfoMapIt->second->frameType); 
       p->AddPacketTag(vTag);
+
+      m_txTrace (p); //Tracesource: Tx -- After adding headers
 
       //peer: mcast group -- ipv4 multicast group
       if (!(m_peerMcastIpv4Address.IsInitialized())) {

@@ -204,11 +204,11 @@ EvalvidClient::HandleRead (Ptr<Socket> socket)
         {
           if (packet->GetSize () > 0)
             {
+              m_rxTrace (packet, from); //Tracesource: Rx -- before removing header
+
               SeqTsHeader seqTs;
               packet->RemoveHeader (seqTs);
               uint32_t packetId = seqTs.GetSeq ();
-
-              m_rxTrace (packet, from); //Tracesource: Rx
 
               // remove the VideoPacketTypeTag from received packet -- evalvid
               VideoPacketTypeTag vTag;

@@ -31,6 +31,9 @@
 #include "ns3/seq-ts-header.h"
 #include "ns3/socket.h"
 
+#include "ns3/traced-callback.h"
+
+
 #include <stdio.h>
 #include <fstream>
 #include <iostream>
@@ -109,6 +112,8 @@ private:
 
   map<uint32_t, m_videoInfoStruct_t*> m_videoInfoMap;
   map<uint32_t, m_videoInfoStruct_t*>::iterator m_videoInfoMapIt;
+
+  TracedCallback<Ptr<const Packet> > m_txTrace;
 };
 
 } // namespace ns3
