@@ -234,6 +234,11 @@ EvalvidServer::Send ()
           seqTs.SetSeq (m_packetId);
           p->AddHeader (seqTs);
 
+          //adding VideoPacketTag to Packet: I, B, or P
+          VideoPacketTypeTag vTag;
+          vTag.SetVideoPacketType(m_videoInfoMapIt->second->frameType); 
+          p->AddPacketTag(vTag);
+
           //peer: mcast group -- ipv4 multicast group
           if (!(m_peerMcastIpv4Address.IsInitialized())) {
             m_socket->SendTo(p, 0, m_peerAddress);
@@ -269,6 +274,11 @@ EvalvidServer::Send ()
       SeqTsHeader seqTs;
       seqTs.SetSeq (m_packetId);
       p->AddHeader (seqTs);
+
+      //adding VideoPacketTag to Packet: I, B, or P
+      VideoPacketTypeTag vTag;
+      vTag.SetVideoPacketType(m_videoInfoMapIt->second->frameType); 
+      p->AddPacketTag(vTag);
 
       //peer: mcast group -- ipv4 multicast group
       if (!(m_peerMcastIpv4Address.IsInitialized())) {
