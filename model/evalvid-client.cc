@@ -71,6 +71,10 @@ EvalvidClient::GetTypeId (void)
                    BooleanValue (true),
                    MakeBooleanAccessor (&EvalvidClient::m_enableRequest),
                    MakeBooleanChecker ())
+    .AddTraceSource ("Rx",
+                      "A packet has been received",
+                      MakeTraceSourceAccessor (&EvalvidClient::m_rxTrace),
+                      "ns3::Packet::AddressTracedCallback")
     ;
   return tid;
 }
@@ -203,6 +207,8 @@ EvalvidClient::HandleRead (Ptr<Socket> socket)
               SeqTsHeader seqTs;
               packet->RemoveHeader (seqTs);
               uint32_t packetId = seqTs.GetSeq ();
+
+              m_rxTrace (packet, from); //Tracesource: Rx
 
               // remove the VideoPacketTypeTag from received packet -- evalvid
               VideoPacketTypeTag vTag;

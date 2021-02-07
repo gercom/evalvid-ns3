@@ -105,6 +105,8 @@ private:
   bool        m_enableRequest;
   uint16_t    m_peerPort;
   EventId     m_sendEvent;
+
+  TracedCallback<Ptr<const Packet>, const Address &> m_rxTrace;
 };
 
 } // namespace ns3
