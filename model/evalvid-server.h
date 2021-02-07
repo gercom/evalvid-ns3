@@ -116,9 +116,9 @@ class VideoPacketTypeTag : public Tag
  {
  public:
    VideoPacketTypeTag ();
-   VideoPacketTypeTag (std::string videoPacketType);
+   VideoPacketTypeTag (string videoPacketType);
 
-   void SetVideoPacketType (std::string n);
+   void SetVideoPacketType (string n);
    std::string GetVideoPacketType (void) const;
    static TypeId GetTypeId (void);
    virtual TypeId GetInstanceTypeId (void) const;
@@ -128,7 +128,7 @@ class VideoPacketTypeTag : public Tag
    virtual void Print (std::ostream &os) const;
  
  private:
-   std::string m_videoPacketType; 
+   string m_videoPacketType; 
  };
 
 } // namespace ns3

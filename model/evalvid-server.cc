@@ -363,21 +363,23 @@ VideoPacketTypeTag::VideoPacketTypeTag ()
   NS_LOG_FUNCTION (this);
 }
 
-VideoPacketTypeTag::VideoPacketTypeTag (std::string videoPacketType)
+VideoPacketTypeTag::VideoPacketTypeTag (string videoPacketType)
   :Tag(), m_videoPacketType(videoPacketType)
 {
   NS_LOG_FUNCTION (this << videoPacketType);
 }
 
 void
-VideoPacketTypeTag::SetVideoPacketType (std::string n)
+VideoPacketTypeTag::SetVideoPacketType (string n)
 {
+  NS_LOG_FUNCTION (this << n);
   m_videoPacketType = n;
 }
 
 std::string
 VideoPacketTypeTag::GetVideoPacketType (void) const
 {
+  NS_LOG_FUNCTION (this);
   return m_videoPacketType;
 }
 
@@ -400,12 +402,14 @@ VideoPacketTypeTag::GetInstanceTypeId (void) const
 uint32_t
 VideoPacketTypeTag::GetSerializedSize (void) const
 {
+  NS_LOG_FUNCTION (this);
   uint32_t s = 1 + m_videoPacketType.size();  // +1 for name length field
   return s;
 }
 void
 VideoPacketTypeTag::Serialize (TagBuffer i) const
 {
+  NS_LOG_FUNCTION (this << &i);
   const char *n = m_videoPacketType.c_str();
   uint8_t l = (uint8_t) m_videoPacketType.size ();
 
@@ -415,6 +419,7 @@ VideoPacketTypeTag::Serialize (TagBuffer i) const
 void
 VideoPacketTypeTag::Deserialize (TagBuffer i)
 {
+  NS_LOG_FUNCTION (this << &i);
   uint8_t l = i.ReadU8();
   char buf[256];
 
@@ -424,6 +429,7 @@ VideoPacketTypeTag::Deserialize (TagBuffer i)
 void
 VideoPacketTypeTag::Print (std::ostream &os) const
 {
+  NS_LOG_FUNCTION (this << &os);
   os << "VideoPacketType=" << m_videoPacketType;
 }
 
