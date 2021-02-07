@@ -5,6 +5,7 @@ def build(bld):
     module.source = [
         'model/evalvid-client.cc',
         'model/evalvid-server.cc',
+        'model/video-type-tag.cc',
         'helper/evalvid-client-server-helper.cc',
         ]
         
@@ -14,6 +15,7 @@ def build(bld):
         'model/evalvid-client.h',
         'model/evalvid-server.h',
         'helper/evalvid-client-server-helper.h',
+        'model/video-type-tag.h',
         ]
         
     if (bld.env['ENABLE_EXAMPLES']):
