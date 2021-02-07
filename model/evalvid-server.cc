@@ -20,6 +20,9 @@
  *
  */
 
+#include "ns3/tag.h"
+#include "ns3/packet.h"
+
 #include "ns3/log.h"
 #include "ns3/ipv4-address.h"
 #include "ns3/nstime.h"
@@ -40,7 +43,6 @@ namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("EvalvidServer");
 NS_OBJECT_ENSURE_REGISTERED (EvalvidServer);
-
 
 TypeId
 EvalvidServer::GetTypeId (void)
@@ -349,6 +351,80 @@ EvalvidServer::HandleRead (Ptr<Socket> socket)
           NS_FATAL_ERROR(">> EvalvidServer: Frame does not exist!");
         }
     }
+}
+
+/***************************************************************
+ *           VideoPacketType Tags
+ ***************************************************************/
+
+VideoPacketTypeTag::VideoPacketTypeTag ()
+  :Tag()
+{
+  NS_LOG_FUNCTION (this);
+}
+
+VideoPacketTypeTag::VideoPacketTypeTag (std::string videoPacketType)
+  :Tag(), m_videoPacketType(videoPacketType)
+{
+  NS_LOG_FUNCTION (this << videoPacketType);
+}
+
+void
+VideoPacketTypeTag::SetVideoPacketType (std::string n)
+{
+  m_videoPacketType = n;
+}
+
+std::string
+VideoPacketTypeTag::GetVideoPacketType (void) const
+{
+  return m_videoPacketType;
+}
+
+NS_OBJECT_ENSURE_REGISTERED (VideoPacketTypeTag);
+
+TypeId
+VideoPacketTypeTag::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::VideoPacketTypeTag")
+    .SetParent<Tag> ()
+    .SetGroupName("Network")
+    .AddConstructor<VideoPacketTypeTag> ();
+  return tid;
+}
+TypeId
+VideoPacketTypeTag::GetInstanceTypeId (void) const
+{
+  return GetTypeId ();
+}
+uint32_t
+VideoPacketTypeTag::GetSerializedSize (void) const
+{
+  uint32_t s = 1 + m_videoPacketType.size();  // +1 for name length field
+  return s;
+}
+void
+VideoPacketTypeTag::Serialize (TagBuffer i) const
+{
+  const char *n = m_videoPacketType.c_str();
+  uint8_t l = (uint8_t) m_videoPacketType.size ();
+
+  i.WriteU8 (l);
+  i.Write ( (uint8_t*) n , (uint32_t) l);
+}
+void
+VideoPacketTypeTag::Deserialize (TagBuffer i)
+{
+  uint8_t l = i.ReadU8();
+  char buf[256];
+
+  i.Read ( (uint8_t* ) buf, (uint32_t) l);
+  m_videoPacketType = std::string (buf, l);
+}
+void
+VideoPacketTypeTag::Print (std::ostream &os) const
+{
+  os << "VideoPacketType=" << m_videoPacketType;
 }
 
 } // Namespace ns3

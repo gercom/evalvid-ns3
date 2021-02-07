@@ -112,6 +112,25 @@ private:
   map<uint32_t, m_videoInfoStruct_t*>::iterator m_videoInfoMapIt;
 };
 
+class VideoPacketTypeTag : public Tag
+ {
+ public:
+   VideoPacketTypeTag ();
+   VideoPacketTypeTag (std::string videoPacketType);
+
+   void SetVideoPacketType (std::string n);
+   std::string GetVideoPacketType (void) const;
+   static TypeId GetTypeId (void);
+   virtual TypeId GetInstanceTypeId (void) const;
+   virtual uint32_t GetSerializedSize (void) const;
+   virtual void Serialize (TagBuffer i) const;
+   virtual void Deserialize (TagBuffer i);
+   virtual void Print (std::ostream &os) const;
+ 
+ private:
+   std::string m_videoPacketType; 
+ };
+
 } // namespace ns3
 
 #endif // __EVALVID_SERVER_H__
