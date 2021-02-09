@@ -71,7 +71,7 @@ EvalvidServer::GetTypeId (void)
                    MakeUintegerChecker<uint16_t> ())
     .AddAttribute ("MutlicastGroupAddress",
                    "The multicast group address for video traffic",
-                   Ipv4AddressValue (),
+                   Ipv4AddressValue ("0.0.0.0"),
                    MakeIpv4AddressAccessor (&EvalvidServer::m_peerMcastIpv4Address),
                    MakeIpv4AddressChecker ())
     .AddTraceSource ("Tx", "A new packet is created and is sent",
@@ -91,6 +91,7 @@ EvalvidServer::EvalvidServer ()
   m_packetId = 0;
   m_sendEvent = EventId ();
   m_sending = false;
+  m_sendingMcast = false;
 }
 
 EvalvidServer::~EvalvidServer ()
@@ -136,8 +137,9 @@ EvalvidServer::StartApplication (void)
     }
 
   //peer: mcast group -- ipv4 multicast group
-  if (m_peerMcastIpv4Address.IsInitialized()) {
+  if (!m_peerMcastIpv4Address.IsAny()) {
       m_peerMcastAddress = Address(InetSocketAddress(m_peerMcastIpv4Address, m_port));
+      m_sendingMcast = true;
   }
   
   //Load video trace file
@@ -242,7 +244,7 @@ EvalvidServer::Send ()
           m_txTrace (p); //Tracesource: Tx -- After adding headers
 
           //peer: mcast group -- ipv4 multicast group
-          if (!(m_peerMcastIpv4Address.IsInitialized())) {
+          if (!m_sendingMcast) {
             m_socket->SendTo(p, 0, m_peerAddress);
           }
           else {
@@ -285,7 +287,7 @@ EvalvidServer::Send ()
       m_txTrace (p); //Tracesource: Tx -- After adding headers
 
       //peer: mcast group -- ipv4 multicast group
-      if (!(m_peerMcastIpv4Address.IsInitialized())) {
+      if (!m_sendingMcast) {
         m_socket->SendTo(p, 0, m_peerAddress);
       }
       else {

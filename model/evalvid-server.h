@@ -98,6 +98,7 @@ private:
   Address     m_peerAddress;
   Address     m_peerMcastAddress;   //multicast address for video multicast transmission
   Ipv4Address m_peerMcastIpv4Address; //Ipv4 multicast address for video multicast transmission
+  bool        m_sendingMcast; //define multicast transmission
   EventId     m_sendEvent;
   bool        m_sending;
 

@@ -101,6 +101,7 @@ private:
   Ptr<Socket> m_socketMcast; //for receiving multicast packet
   Address     m_peerMcastAddress;   //multicast address for video multicast transmission
   Ipv4Address m_peerMcastIpv4Address; //Ipv4 multicast address for video multicast transmission
+  bool        m_sendingMcast; //define multicast transmission
   Ipv4Address m_peerAddress;
   bool        m_enableRequest;
   uint16_t    m_peerPort;

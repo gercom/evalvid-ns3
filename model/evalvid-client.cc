@@ -63,7 +63,7 @@ EvalvidClient::GetTypeId (void)
                    MakeStringChecker())
     .AddAttribute ("MutlicastGroupAddress",
                    "The multicast group address for video traffic",
-                   Ipv4AddressValue (),
+                   Ipv4AddressValue ("0.0.0.0"),
                    MakeIpv4AddressAccessor (&EvalvidClient::m_peerMcastIpv4Address),
                    MakeIpv4AddressChecker ())
     .AddAttribute ("EnableRequest",
@@ -83,6 +83,9 @@ EvalvidClient::EvalvidClient ()
 {
   NS_LOG_FUNCTION_NOARGS ();
   m_sendEvent = EventId ();
+
+  m_sendingMcast = false;
+
 }
 
 EvalvidClient::~EvalvidClient ()
@@ -118,7 +121,8 @@ EvalvidClient::StartApplication (void)
 
       //Multicast socket
       //peer: mcast group -- ipv4
-      if (m_peerMcastIpv4Address.IsInitialized()) {
+      if (!m_peerMcastIpv4Address.IsAny()) {
+        m_sendingMcast = true; //enabling multicast transmission
         m_peerMcastAddress = Address(InetSocketAddress(m_peerMcastIpv4Address, m_peerPort));
         m_socketMcast = Socket::CreateSocket (GetNode (), tid);
         if (m_socketMcast->Bind (m_peerMcastAddress) == -1)
@@ -153,7 +157,7 @@ EvalvidClient::StartApplication (void)
 
   m_socket->SetRecvCallback (MakeCallback (&EvalvidClient::HandleRead, this));
   //for receiving multicast video traffic
-  if (m_peerMcastIpv4Address.IsInitialized()) {
+  if (m_sendingMcast) {
     m_socketMcast->SetRecvCallback (MakeCallback (&EvalvidClient::HandleRead, this));
   }
 
